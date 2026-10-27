@@ -4,18 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D Traffic Puzzle Master</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         * {
-            user
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-press {
+            transition: transform 0.1s ease, filter 0.1s ease;
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+        /* Custom scrollbar for level modal */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen overflow-hidden flex flex-col justify-between">
+
+    <!-- Three.js Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Top Navigation
