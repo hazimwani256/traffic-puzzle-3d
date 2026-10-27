@@ -1,18 +1,16 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Traffic Puzzle Master</title>
-
-    <!-- Tailwind CSS -->
+    <title>3D Traffic Master - 100 Levels</title>
+    
+    <!-- External CDN Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <!-- Google Fonts -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -28,26 +26,30 @@
             color: #f3f4f6;
             overflow: hidden;
             touch-action: none;
-        }
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
+            margin: 0;
+            padding: 0;
             width: 100vw;
             height: 100vh;
+        }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 0;
         }
         .glass-panel {
-            background: rgba(17, 24, 39, 0.85);
+            background: rgba(17, 24, 39, 0.75);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
         .btn-press {
             transition: transform 0.1s ease, filter 0.1s ease;
         }
         .btn-press:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
             filter: brightness(0.9);
         }
         /* Custom scrollbar for level modal */
@@ -63,9 +65,831 @@
         }
     </style>
 </head>
-<body class="w-screen h-screen overflow-hidden flex flex-col justify-between">
+<body class="w-screen h-screen overflow-hidden flex flex-col justify-between relative">
 
-    <!-- Three.js Canvas Container -->
+    <!-- 3D Canvas WebGL Container -->
     <div id="canvas-container"></div>
 
-    <!-- Top Navigation
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none p-4">
+
+        <!-- Header / Top Bar -->
+        <header class="w-full max-w-xl mx-auto flex items-center justify-between pointer-events-auto">
+            <button id="btn-levels" class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-2 font-bold text-sm sm:text-base shadow-lg btn-press hover:bg-slate-800/80">
+                <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-400"></i>
+                <span>Level <span id="ui-level-num">1</span></span>
+            </button>
+
+            <!-- Moves & Matches Indicator -->
+            <div class="glass-panel px-5 py-2 rounded-2xl flex items-center gap-4 shadow-lg">
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Moves</span>
+                    <span id="ui-moves-left" class="text-xl font-extrabold text-amber-400">15</span>
+                </div>
+                <div class="w-px h-6 bg-slate-700"></div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Target</span>
+                    <span id="ui-cars-left" class="text-xl font-extrabold text-emerald-400">12</span>
+                </div>
+            </div>
+
+            <!-- Settings / Sound Toggle -->
+            <button id="btn-sound" class="glass-panel p-2.5 rounded-2xl shadow-lg btn-press hover:bg-slate-800/80">
+                <i id="icon-sound" data-lucide="volume-2" class="w-5 h-5 text-emerald-400"></i>
+            </button>
+        </header>
+
+        <!-- Matching Bay Visual Indicator Bar -->
+        <div class="w-full max-w-sm mx-auto pointer-events-auto my-auto mt-2">
+            <div class="glass-panel p-2 rounded-2xl flex justify-center items-center gap-2 shadow-2xl border border-indigo-500/30">
+                <div class="text-[10px] uppercase font-bold text-indigo-300 mr-1 tracking-wider hidden sm:block">Bay Slot:</div>
+                <div id="bay-slots-container" class="flex gap-1.5 sm:gap-2">
+                    <!-- 7 Dynamic Slots -->
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900/80 border border-slate-700/50 flex items-center justify-center text-xs font-bold transition-all shadow-inner bay-slot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls / Power-ups -->
+        <footer class="w-full max-w-md mx-auto flex items-center justify-around pointer-events-auto mb-2">
+            <!-- Undo Powerup -->
+            <button id="btn-power-undo" class="glass-panel p-3 rounded-2xl flex flex-col items-center gap-1 btn-press hover:bg-slate-800/80 relative">
+                <i data-lucide="rotate-ccw" class="w-6 h-6 text-amber-400"></i>
+                <span class="text-[10px] font-bold text-slate-300">Undo</span>
+                <span id="badge-undo" class="absolute -top-1 -right-1 bg-amber-500 text-slate-950 font-extrabold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shadow">3</span>
+            </button>
+
+            <!-- Shuffle Powerup -->
+            <button id="btn-power-shuffle" class="glass-panel p-3 rounded-2xl flex flex-col items-center gap-1 btn-press hover:bg-slate-800/80 relative">
+                <i data-lucide="shuffle" class="w-6 h-6 text-cyan-400"></i>
+                <span class="text-[10px] font-bold text-slate-300">Shuffle</span>
+                <span id="badge-shuffle" class="absolute -top-1 -right-1 bg-cyan-500 text-slate-950 font-extrabold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shadow">2</span>
+            </button>
+
+            <!-- VIP Helicopter Powerup -->
+            <button id="btn-power-vip" class="glass-panel p-3 rounded-2xl flex flex-col items-center gap-1 btn-press hover:bg-slate-800/80 relative">
+                <i data-lucide="plane-takeoff" class="w-6 h-6 text-emerald-400"></i>
+                <span class="text-[10px] font-bold text-slate-300">Helicopter</span>
+                <span id="badge-vip" class="absolute -top-1 -right-1 bg-emerald-500 text-slate-950 font-extrabold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shadow">1</span>
+            </button>
+
+            <!-- Reset Level -->
+            <button id="btn-restart" class="glass-panel p-3 rounded-2xl flex flex-col items-center gap-1 btn-press hover:bg-slate-800/80">
+                <i data-lucide="refresh-cw" class="w-6 h-6 text-rose-400"></i>
+                <span class="text-[10px] font-bold text-slate-300">Reset</span>
+            </button>
+        </footer>
+    </div>
+
+    <!-- MODAL: Level Select -->
+    <div id="modal-levels" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md max-h-[80vh] rounded-3xl p-6 flex flex-col shadow-2xl border border-slate-700/50">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                    <i data-lucide="map" class="text-indigo-400"></i> Select Level
+                </h2>
+                <button id="btn-close-levels" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="levels-grid" class="grid grid-cols-5 gap-2.5 overflow-y-auto p-1 max-h-[60vh]">
+                <!-- Dynamic 100 level buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Level Complete (Win) -->
+    <div id="modal-win" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl border border-emerald-500/30">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
+                <i data-lucide="trophy" class="w-10 h-10"></i>
+            </div>
+            <h2 class="text-2xl font-black text-white mb-1">Level Cleared!</h2>
+            <p class="text-xs text-slate-300 mb-6">Excellent driving! All traffic jam targets resolved.</p>
+
+            <button id="btn-next-level" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl shadow-lg shadow-emerald-500/25 btn-press flex items-center justify-center gap-2 text-base">
+                <span>Next Level</span>
+                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: Game Over (Lose) -->
+    <div id="modal-lose" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl border border-rose-500/30">
+            <div class="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+                <i data-lucide="alert-triangle" class="w-10 h-10"></i>
+            </div>
+            <h2 id="lose-title" class="text-2xl font-black text-white mb-1">Gridlock Detected!</h2>
+            <p id="lose-desc" class="text-xs text-slate-300 mb-6">The matching bay is completely full or you ran out of moves!</p>
+
+            <div class="w-full flex gap-3">
+                <button id="btn-retry" class="w-full py-3.5 bg-rose-500 hover:bg-rose-400 text-white font-black rounded-2xl shadow-lg shadow-rose-500/25 btn-press flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                    <span>Try Again</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Engine & Controller Script -->
+    <script>
+        // --- SYNTHESIZED SOUND EFFECTS (Web Audio API) ---
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, type, duration, vol = 0.1) {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+            playTap() { this.playTone(400, 'sine', 0.08, 0.15); }
+            playDrive() { this.playTone(220, 'triangle', 0.2, 0.2); }
+            playMatch() {
+                if (!this.enabled) return;
+                this.init();
+                [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                    setTimeout(() => this.playTone(freq, 'sine', 0.2, 0.15), idx * 80);
+                });
+            }
+            playWin() {
+                if (!this.enabled) return;
+                this.init();
+                [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+                    setTimeout(() => this.playTone(freq, 'triangle', 0.3, 0.2), idx * 100);
+                });
+            }
+            playLose() {
+                if (!this.enabled) return;
+                this.init();
+                [300, 260, 220, 180].forEach((freq, idx) => {
+                    setTimeout(() => this.playTone(freq, 'sawtooth', 0.25, 0.15), idx * 100);
+                });
+            }
+            playHelicopter() {
+                this.playTone(150, 'sawtooth', 0.4, 0.2);
+            }
+        }
+        const audio = new SoundSystem();
+
+        // --- GAME STATE & CONSTANTS ---
+        const COLOR_PALETTE = [
+            { name: 'Red', hex: '#ef4444', threeHex: 0xef4444 },
+            { name: 'Blue', hex: '#3b82f6', threeHex: 0x3b82f6 },
+            { name: 'Green', hex: '#10b981', threeHex: 0x10b981 },
+            { name: 'Yellow', hex: '#f59e0b', threeHex: 0xf59e0b },
+            { name: 'Purple', hex: '#8b5cf6', threeHex: 0x8b5cf6 },
+            { name: 'Orange', hex: '#f97316', threeHex: 0xf97316 }
+        ];
+
+        const DIRECTIONS = {
+            N: { x: 0, z: -1, angle: Math.PI },
+            S: { x: 0, z: 1, angle: 0 },
+            E: { x: 1, z: 0, angle: Math.PI / 2 },
+            W: { x: -1, z: 0, angle: -Math.PI / 2 }
+        };
+
+        const MAX_BAY_SLOTS = 7;
+        const GRID_SIZE = 7; // 7x7 Grid
+
+        let currentLevel = 1;
+        let movesLeft = 20;
+        let carsToClear = 0;
+        let isAnimating = false;
+        let gameActive = false;
+
+        let bayCars = []; // Cars currently in matching bay
+        let gridCars = []; // Cars active on grid
+        let moveHistory = []; // For Undo functionality
+
+        // Powerup balances
+        let powerups = { undo: 3, shuffle: 2, vip: 1 };
+
+        // --- THREE.JS SCENE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0f19);
+        scene.fog = new THREE.FogExp2(0x0b0f19, 0.035);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Lighting Setup
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(12, 20, 15);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 50;
+        dirLight.shadow.camera.left = -10;
+        dirLight.shadow.camera.right = 10;
+        dirLight.shadow.camera.top = 10;
+        dirLight.shadow.camera.bottom = -10;
+        scene.add(dirLight);
+
+        // Position Camera
+        function positionCamera() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const distance = aspect < 1 ? 16 : 12;
+            camera.position.set(0, distance * 1.3, distance * 1.2);
+            camera.lookAt(0, -0.5, 0);
+        }
+        positionCamera();
+
+        // --- PROCEDURAL 3D MESH GENERATION ---
+        function createGroundGrid() {
+            const group = new THREE.Group();
+            
+            // Road asphalt slab
+            const boardGeo = new THREE.BoxGeometry(GRID_SIZE * 1.2, 0.2, GRID_SIZE * 1.2);
+            const boardMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+            const board = new THREE.Mesh(boardGeo, boardMat);
+            board.position.y = -0.1;
+            board.receiveShadow = true;
+            group.add(board);
+
+            // Grid lines / tiles
+            const half = Math.floor(GRID_SIZE / 2);
+            for (let x = -half; x <= half; x++) {
+                for (let z = -half; z <= half; z++) {
+                    const tileGeo = new THREE.PlaneGeometry(0.92, 0.92);
+                    const tileMat = new THREE.MeshStandardMaterial({ 
+                        color: 0x334155, 
+                        roughness: 0.6,
+                        side: THREE.DoubleSide
+                    });
+                    const tile = new THREE.Mesh(tileGeo, tileMat);
+                    tile.rotation.x = Math.PI / 2;
+                    tile.position.set(x, 0.01, z);
+                    tile.receiveShadow = true;
+                    group.add(tile);
+                }
+            }
+            return group;
+        }
+        const groundGrid = createGroundGrid();
+        scene.add(groundGrid);
+
+        // Procedural Car Mesh Construction
+        function createCarMesh(colorHex) {
+            const carGroup = new THREE.Group();
+
+            // Main Body (Rounded styling via BoxGeometry scaling)
+            const bodyGeo = new THREE.BoxGeometry(0.72, 0.32, 0.95);
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: colorHex, 
+                roughness: 0.2, 
+                metalness: 0.3 
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.22;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            carGroup.add(body);
+
+            // Roof / Cabin
+            const cabinGeo = new THREE.BoxGeometry(0.58, 0.24, 0.52);
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
+            const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+            cabin.position.set(0, 0.42, -0.05);
+            cabin.castShadow = true;
+            carGroup.add(cabin);
+
+            // Wheels
+            const wheelGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.08, 12);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.9 });
+            const wheelPositions = [
+                [-0.36, 0.1, 0.28],
+                [0.36, 0.1, 0.28],
+                [-0.36, 0.1, -0.28],
+                [0.36, 0.1, -0.28]
+            ];
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(...pos);
+                wheel.castShadow = true;
+                carGroup.add(wheel);
+            });
+
+            // Front Direction Arrow (Top of cabin)
+            const arrowShape = new THREE.Shape();
+            arrowShape.moveTo(0, 0.2);
+            arrowShape.lineTo(-0.15, -0.15);
+            arrowShape.lineTo(-0.06, -0.15);
+            arrowShape.lineTo(-0.06, -0.3);
+            arrowShape.lineTo(0.06, -0.3);
+            arrowShape.lineTo(0.06, -0.15);
+            arrowShape.lineTo(0.15, -0.15);
+            arrowShape.closePath();
+
+            const arrowGeo = new THREE.ShapeGeometry(arrowShape);
+            const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+            arrow.rotation.x = -Math.PI / 2;
+            arrow.position.set(0, 0.55, -0.05);
+            carGroup.add(arrow);
+
+            return carGroup;
+        }
+
+        // --- PSEUDO-RANDOM SEEDABLE LEVEL GENERATOR WITH REVERSE-SOLVABILITY ---
+        function generateLevelData(levelNum) {
+            // Seeded RNG
+            let seed = levelNum * 12345;
+            function random() {
+                let x = Math.sin(seed++) * 10000;
+                return x - Math.floor(x);
+            }
+
+            const numColors = Math.min(3 + Math.floor(levelNum / 20), COLOR_PALETTE.length);
+            const activeColors = COLOR_PALETTE.slice(0, numColors);
+            
+            // Determine set count (cars come in sets of 3)
+            const sets = 3 + Math.floor(levelNum / 5);
+            carsToClear = sets * 3;
+            movesLeft = carsToClear + 6;
+
+            let carColorList = [];
+            for (let i = 0; i < sets * 3; i++) {
+                carColorList.push(activeColors[i % numColors]);
+            }
+
+            // Shuffle color distribution
+            for (let i = carColorList.length - 1; i > 0; i--) {
+                const j = Math.floor(random() * (i + 1));
+                [carColorList[i], carColorList[j]] = [carColorList[j], carColorList[i]];
+            }
+
+            // Create occupied grid matrix
+            const half = Math.floor(GRID_SIZE / 2);
+            let occupied = {};
+            let cars = [];
+
+            const dirKeys = ['N', 'S', 'E', 'W'];
+
+            // Generate valid positions with outbound direction validation
+            let colorIdx = 0;
+            let attempts = 0;
+
+            while (cars.length < carsToClear && attempts < 500) {
+                attempts++;
+                let gx = Math.floor(random() * GRID_SIZE) - half;
+                let gz = Math.floor(random() * GRID_SIZE) - half;
+                let key = `${gx},${gz}`;
+
+                if (!occupied[key]) {
+                    // Pick a cardinal direction facing outward towards perimeter
+                    let validDirs = [];
+                    if (gx > 0) validDirs.push('E');
+                    if (gx < 0) validDirs.push('W');
+                    if (gz > 0) validDirs.push('S');
+                    if (gz < 0) validDirs.push('N');
+
+                    let dirKey = validDirs.length > 0 ? validDirs[Math.floor(random() * validDirs.length)] : dirKeys[Math.floor(random() * dirKeys.length)];
+
+                    occupied[key] = true;
+                    cars.push({
+                        id: 'car_' + cars.length,
+                        gridX: gx,
+                        gridZ: gz,
+                        dirKey: dirKey,
+                        color: carColorList[colorIdx]
+                    });
+                    colorIdx++;
+                }
+            }
+
+            return cars;
+        }
+
+        // --- LEVEL INITIALIZATION & RENDERING ---
+        function loadLevel(levelNum) {
+            // Clear existing scene cars
+            gridCars.forEach(car => scene.remove(car.mesh));
+            bayCars.forEach(car => scene.remove(car.mesh));
+            gridCars = [];
+            bayCars = [];
+            moveHistory = [];
+
+            currentLevel = levelNum;
+            const levelData = generateLevelData(levelNum);
+
+            // Construct 3D Car Entities
+            levelData.forEach(data => {
+                const mesh = createCarMesh(data.color.threeHex);
+                mesh.position.set(data.gridX, 0, data.gridZ);
+                mesh.rotation.y = DIRECTIONS[data.dirKey].angle;
+                scene.add(mesh);
+
+                gridCars.push({
+                    ...data,
+                    mesh: mesh,
+                    inBay: false
+                });
+            });
+
+            // Update UI Counters & Modals
+            document.getElementById('ui-level-num').innerText = currentLevel;
+            document.getElementById('ui-moves-left').innerText = movesLeft;
+            document.getElementById('ui-cars-left').innerText = gridCars.length;
+            updateBayUI();
+
+            gameActive = true;
+            isAnimating = false;
+        }
+
+        // --- TRAFFIC CLEARANCE CHECK ---
+        function checkPathClear(car) {
+            const dir = DIRECTIONS[car.dirKey];
+            let currX = car.gridX + dir.x;
+            let currZ = car.gridZ + dir.z;
+
+            const half = Math.floor(GRID_SIZE / 2);
+
+            while (currX >= -half && currX <= half && currZ >= -half && currZ <= half) {
+                const blockingCar = gridCars.find(c => !c.inBay && c.gridX === currX && c.gridZ === currZ);
+                if (blockingCar) {
+                    return { clear: false, blocker: blockingCar };
+                }
+                currX += dir.x;
+                currZ += dir.z;
+            }
+            return { clear: true };
+        }
+
+        // --- MATCHING BAY & POWER-UP LOGIC ---
+        function updateBayUI() {
+            const slots = document.querySelectorAll('.bay-slot');
+            slots.forEach((slot, idx) => {
+                if (idx < bayCars.length) {
+                    const car = bayCars[idx];
+                    slot.style.backgroundColor = car.color.hex;
+                    slot.style.borderColor = '#ffffff';
+                    slot.innerText = '🚗';
+                } else {
+                    slot.style.backgroundColor = 'rgba(15, 23, 42, 0.8)';
+                    slot.style.borderColor = 'rgba(51, 65, 85, 0.5)';
+                    slot.innerText = '';
+                }
+            });
+        }
+
+        function moveCarToBay(car) {
+            if (!gameActive || isAnimating) return;
+            isAnimating = true;
+
+            // Check if space in bay
+            if (bayCars.length >= MAX_BAY_SLOTS) {
+                isAnimating = false;
+                return;
+            }
+
+            const pathStatus = checkPathClear(car);
+            if (!pathStatus.clear) {
+                // Blocked Animation Bounce
+                audio.playTap();
+                const origZ = car.mesh.position.z;
+                const origX = car.mesh.position.x;
+                const dir = DIRECTIONS[car.dirKey];
+
+                let targetX = origX + dir.x * 0.25;
+                let targetZ = origZ + dir.z * 0.25;
+
+                let startTime = performance.now();
+                function animateBump(now) {
+                    let elapsed = (now - startTime) / 100;
+                    if (elapsed < 1) {
+                        car.mesh.position.x = THREE.MathUtils.lerp(origX, targetX, elapsed);
+                        car.mesh.position.z = THREE.MathUtils.lerp(origZ, targetZ, elapsed);
+                        requestAnimationFrame(animateBump);
+                    } else if (elapsed < 2) {
+                        car.mesh.position.x = THREE.MathUtils.lerp(targetX, origX, elapsed - 1);
+                        car.mesh.position.z = THREE.MathUtils.lerp(targetZ, origZ, elapsed - 1);
+                        requestAnimationFrame(animateBump);
+                    } else {
+                        car.mesh.position.set(origX, 0, origZ);
+                        isAnimating = false;
+                    }
+                }
+                requestAnimationFrame(animateBump);
+                return;
+            }
+
+            // Save state for Undo
+            moveHistory.push({
+                car: car,
+                origGridX: car.gridX,
+                origGridZ: car.gridZ
+            });
+
+            // Successful Drive-Out Path
+            audio.playDrive();
+            car.inBay = true;
+
+            // Decrement Moves
+            movesLeft--;
+            document.getElementById('ui-moves-left').innerText = movesLeft;
+
+            // Exit Grid Animation then add to Bay
+            const dir = DIRECTIONS[car.dirKey];
+            const exitX = car.gridX + dir.x * 6;
+            const exitZ = car.gridZ + dir.z * 6;
+
+            let startTime = performance.now();
+            function animateExit(now) {
+                let elapsed = (now - startTime) / 250;
+                if (elapsed < 1) {
+                    car.mesh.position.x = THREE.MathUtils.lerp(car.gridX, exitX, elapsed);
+                    car.mesh.position.z = THREE.MathUtils.lerp(car.gridZ, exitZ, elapsed);
+                    requestAnimationFrame(animateExit);
+                } else {
+                    // Hide 3D mesh from grid
+                    car.mesh.visible = false;
+                    
+                    // Insert into Matching Bay array (Auto-grouping identical colors)
+                    let insertIdx = bayCars.findLastIndex(c => c.color.name === car.color.name);
+                    if (insertIdx !== -1) {
+                        bayCars.splice(insertIdx + 1, 0, car);
+                    } else {
+                        bayCars.push(car);
+                    }
+
+                    updateBayUI();
+                    document.getElementById('ui-cars-left').innerText = gridCars.filter(c => !c.inBay).length;
+
+                    // Evaluate Matches
+                    checkMatchesAndGameState();
+                }
+            }
+            requestAnimationFrame(animateExit);
+        }
+
+        function checkMatchesAndGameState() {
+            // Find 3 consecutive matching colors in Bay
+            let matchedColor = null;
+            let matchIndices = [];
+
+            for (let i = 0; i <= bayCars.length - 3; i++) {
+                if (bayCars[i].color.name === bayCars[i+1].color.name && bayCars[i+1].color.name === bayCars[i+2].color.name) {
+                    matchedColor = bayCars[i].color.name;
+                    matchIndices = [i, i+1, i+2];
+                    break;
+                }
+            }
+
+            if (matchedColor) {
+                audio.playMatch();
+                // Trigger Confetti Blast
+                confetti({
+                    particleCount: 40,
+                    spread: 60,
+                    origin: { y: 0.8 }
+                });
+
+                // Remove matched cars from bay
+                setTimeout(() => {
+                    bayCars = bayCars.filter((_, idx) => !matchIndices.includes(idx));
+                    updateBayUI();
+                    postActionCheck();
+                }, 200);
+            } else {
+                postActionCheck();
+            }
+        }
+
+        function postActionCheck() {
+            isAnimating = false;
+
+            const remainingGridCars = gridCars.filter(c => !c.inBay);
+
+            // Win Condition
+            if (remainingGridCars.length === 0 && bayCars.length === 0) {
+                gameActive = false;
+                audio.playWin();
+                confetti({ particleCount: 120, spread: 100, origin: { y: 0.5 } });
+                document.getElementById('modal-win').classList.remove('hidden');
+                return;
+            }
+
+            // Lose Condition: Full Bay or No Moves
+            if (bayCars.length >= MAX_BAY_SLOTS) {
+                gameActive = false;
+                audio.playLose();
+                document.getElementById('lose-title').innerText = "Matching Bay Full!";
+                document.getElementById('lose-desc').innerText = "Clear matching sets of 3 cars to open space in the bay.";
+                document.getElementById('modal-lose').classList.remove('hidden');
+            } else if (movesLeft <= 0) {
+                gameActive = false;
+                audio.playLose();
+                document.getElementById('lose-title').innerText = "Out of Moves!";
+                document.getElementById('lose-desc').innerText = "No moves left to solve the traffic jam.";
+                document.getElementById('modal-lose').classList.remove('hidden');
+            }
+        }
+
+        // --- POWER-UPS IMPLEMENTATION ---
+        // 1. Undo
+        document.getElementById('btn-power-undo').addEventListener('click', () => {
+            if (!gameActive || isAnimating || moveHistory.length === 0 || powerups.undo <= 0) return;
+            const lastMove = moveHistory.pop();
+            const car = lastMove.car;
+
+            if (car.inBay) {
+                bayCars = bayCars.filter(c => c.id !== car.id);
+                car.inBay = false;
+                car.mesh.position.set(car.gridX, 0, car.gridZ);
+                car.mesh.visible = true;
+                movesLeft++;
+                powerups.undo--;
+                
+                document.getElementById('badge-undo').innerText = powerups.undo;
+                document.getElementById('ui-moves-left').innerText = movesLeft;
+                document.getElementById('ui-cars-left').innerText = gridCars.filter(c => !c.inBay).length;
+                updateBayUI();
+                audio.playTap();
+            }
+        });
+
+        // 2. Shuffle Grid Directions
+        document.getElementById('btn-power-shuffle').addEventListener('click', () => {
+            if (!gameActive || isAnimating || powerups.shuffle <= 0) return;
+            const dirKeys = ['N', 'S', 'E', 'W'];
+            gridCars.forEach(car => {
+                if (!car.inBay) {
+                    car.dirKey = dirKeys[Math.floor(Math.random() * dirKeys.length)];
+                    car.mesh.rotation.y = DIRECTIONS[car.dirKey].angle;
+                }
+            });
+            powerups.shuffle--;
+            document.getElementById('badge-shuffle').innerText = powerups.shuffle;
+            audio.playTap();
+        });
+
+        // 3. VIP Helicopter (Instantly clears 1 blocked car)
+        document.getElementById('btn-power-vip').addEventListener('click', () => {
+            if (!gameActive || isAnimating || powerups.vip <= 0) return;
+            const unblockedCandidate = gridCars.find(c => !c.inBay);
+            if (!unblockedCandidate) return;
+
+            audio.playHelicopter();
+            isAnimating = true;
+
+            // Lift car up into air
+            let startTime = performance.now();
+            function animateFlyOut(now) {
+                let elapsed = (now - startTime) / 400;
+                if (elapsed < 1) {
+                    unblockedCandidate.mesh.position.y = THREE.MathUtils.lerp(0, 8, elapsed);
+                    requestAnimationFrame(animateFlyOut);
+                } else {
+                    unblockedCandidate.mesh.visible = false;
+                    unblockedCandidate.inBay = true;
+                    gridCars = gridCars.filter(c => c.id !== unblockedCandidate.id);
+                    
+                    powerups.vip--;
+                    document.getElementById('badge-vip').innerText = powerups.vip;
+                    document.getElementById('ui-cars-left').innerText = gridCars.filter(c => !c.inBay).length;
+                    
+                    isAnimating = false;
+                    postActionCheck();
+                }
+            }
+            requestAnimationFrame(animateFlyOut);
+        });
+
+        // --- INTERACTION & RAYCASTING ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function handlePointerDown(event) {
+            if (!gameActive || isAnimating) return;
+
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length > 0) {
+                let clickedMesh = intersects[0].object;
+                while (clickedMesh.parent && clickedMesh.parent !== scene) {
+                    clickedMesh = clickedMesh.parent;
+                }
+
+                const targetCar = gridCars.find(c => c.mesh === clickedMesh && !c.inBay);
+                if (targetCar) {
+                    moveCarToBay(targetCar);
+                }
+            }
+        }
+
+        window.addEventListener('pointerdown', handlePointerDown);
+
+        // --- LEVEL SELECT MODAL SETUP ---
+        const levelsGridContainer = document.getElementById('levels-grid');
+        for (let i = 1; i <= 100; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'py-2.5 rounded-xl font-extrabold text-sm glass-panel btn-press hover:bg-indigo-600/40 border border-slate-700/50';
+            btn.innerText = i;
+            btn.addEventListener('click', () => {
+                loadLevel(i);
+                document.getElementById('modal-levels').classList.add('hidden');
+            });
+            levelsGridContainer.appendChild(btn);
+        }
+
+        document.getElementById('btn-levels').addEventListener('click', () => {
+            document.getElementById('modal-levels').classList.remove('hidden');
+        });
+        document.getElementById('btn-close-levels').addEventListener('click', () => {
+            document.getElementById('modal-levels').classList.add('hidden');
+        });
+
+        // --- WIN / LOSE BUTTON HANDLERS ---
+        document.getElementById('btn-next-level').addEventListener('click', () => {
+            document.getElementById('modal-win').classList.add('hidden');
+            loadLevel(currentLevel + 1);
+        });
+        document.getElementById('btn-retry').addEventListener('click', () => {
+            document.getElementById('modal-lose').classList.add('hidden');
+            loadLevel(currentLevel);
+        });
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            loadLevel(currentLevel);
+        });
+
+        // --- SOUND TOGGLE ---
+        document.getElementById('btn-sound').addEventListener('click', () => {
+            audio.enabled = !audio.enabled;
+            const icon = document.getElementById('icon-sound');
+            if (audio.enabled) {
+                icon.setAttribute('data-lucide', 'volume-2');
+                icon.classList.replace('text-slate-500', 'text-emerald-400');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+                icon.classList.replace('text-emerald-400', 'text-slate-500');
+            }
+            lucide.createIcons();
+        });
+
+        // --- RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            positionCamera();
+        });
+
+        // --- RENDER LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // --- START GAME ---
+        window.onload = () => {
+            lucide.createIcons();
+            loadLevel(1);
+            animate();
+        };
+    </script>
+</body>
+</html>
+```
